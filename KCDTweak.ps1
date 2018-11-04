@@ -1,13 +1,13 @@
 <#
 
 .NOTES
-20181026: initial conversion to PS1
+20181026: initial conversion to PS1 from https://www.nexusmods.com/kingdomcomedeliverance/mods/629
 20181027a: added sections: carry500,pebbles,sharpening,gathering,dirt
 20181027b: my first working version 1.0
 20181027c
 	added ability to set cheats
 	added NoGreetings and SaveGame everywhere
-	change to include on the necessary
+	change to include only the necessary
 	activation fixes
 20181030
 	fix XML processing
