@@ -1,6 +1,8 @@
 <#
 
 .NOTES
+TODO: consolidate all the XML document creations.  adding them didn't actually solve anything as the problem was unrelated to the XML object.
+
 20181026: initial conversion to PS1 from https://www.nexusmods.com/kingdomcomedeliverance/mods/629
 20181027a: added sections: carry500,pebbles,sharpening,gathering,dirt
 20181027b: my first working version 1.0
