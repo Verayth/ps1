@@ -23,12 +23,13 @@ $header=@"
 ##################################################################
 # Kingdom Come Deliverence - TWEAKs                              #
 # by Dugarr - Version 2.04                                       #
-# by Verayth - Version 2.04.1                                    #
+# by Verayth - Version 2.04.181106                               #
 ##################################################################
 "@
 $ErrorActionPreference='Stop'
 
 if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+    #if we are running 32-bit on as 64-bit machine
     Write-Warning "Re-launching in 64-bit mode....."
     if ($myInvocation.Line) {
         &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NoProfile $myInvocation.Line
@@ -38,10 +39,9 @@ if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
     exit $lastexitcode
 }
 
-if ([Environment]::Is64BitProcess) {
-    #this is MUCH faster than using Get-Package
-    $progdir=(Get-ItemProperty -ErrorAction SilentlyContinue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 379430').InstallLocation
-} else {
+#this is MUCH faster than using Get-Package
+$progdir=(Get-ItemProperty -ErrorAction SilentlyContinue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 379430').InstallLocation
+if (!$progdir) {
     $progdir=([xml](Get-Package 'Kingdom Come: Deliverance' -ErrorAction SilentlyContinue | ForEach-Object swidtagtext)).SoftwareIdentity.Meta.InstallLocation
 }
 
