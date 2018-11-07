@@ -16,6 +16,7 @@ TODO: consolidate all the XML document creations.  adding them didn't actually s
 	fixed mod file creation (directory structure problem)
 	disable game breaking durability section
 20181104: copied from private repo to git
+20181106: changed to get $progdir from registry.  added launcher and 64-bit check + relaunch
 #>
 
 $header=@"
@@ -27,10 +28,22 @@ $header=@"
 "@
 $ErrorActionPreference='Stop'
 
-#$progdir=([xml](Get-Package 'Kingdom Come: Deliverance' -ErrorAction SilentlyContinue | ForEach-Object swidtagtext)).SoftwareIdentity.Meta.InstallLocation
+if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+    Write-Warning "Re-launching in 64-bit mode....."
+    if ($myInvocation.Line) {
+        &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NoProfile $myInvocation.Line
+    }else{
+        &"$env:WINDIR\sysnative\windowspowershell\v1.0\powershell.exe" -NoProfile -file "$($myInvocation.InvocationName)" $args
+    }
+    exit $lastexitcode
+}
 
-#this is MUCH faster than using Get-Package
-$progdir=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 379430').InstallLocation
+if ([Environment]::Is64BitProcess) {
+    #this is MUCH faster than using Get-Package
+    $progdir=(Get-ItemProperty -ErrorAction SilentlyContinue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 379430').InstallLocation
+} else {
+    $progdir=([xml](Get-Package 'Kingdom Come: Deliverance' -ErrorAction SilentlyContinue | ForEach-Object swidtagtext)).SoftwareIdentity.Meta.InstallLocation
+}
 
 if (!$progdir) {Write-Warning "Unable to find KCD Game folder";Start-Sleep 3;exit 1}
 
