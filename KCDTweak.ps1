@@ -27,7 +27,10 @@ $header=@"
 "@
 $ErrorActionPreference='Stop'
 
-$progdir=([xml](Get-Package 'Kingdom Come: Deliverance' -ErrorAction SilentlyContinue | ForEach-Object swidtagtext)).SoftwareIdentity.Meta.InstallLocation
+#$progdir=([xml](Get-Package 'Kingdom Come: Deliverance' -ErrorAction SilentlyContinue | ForEach-Object swidtagtext)).SoftwareIdentity.Meta.InstallLocation
+
+#this is MUCH faster than using Get-Package
+$progdir=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 379430').InstallLocation
 
 if (!$progdir) {Write-Warning "Unable to find KCD Game folder";Start-Sleep 3;exit 1}
 
