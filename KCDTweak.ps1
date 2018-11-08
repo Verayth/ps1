@@ -17,6 +17,7 @@ TODO: consolidate all the XML document creations.  adding them didn't actually s
 	disable game breaking durability section
 20181104: copied from private repo to git
 20181106: changed to get $progdir from registry.  added launcher and 64-bit check + relaunch
+20181107: added check for 7-Zip
 #>
 
 $header=@"
@@ -46,6 +47,19 @@ if (!$progdir) {
 }
 
 if (!$progdir) {Write-Warning "Unable to find KCD Game folder";Start-Sleep 3;exit 1}
+
+if (Get-Command 7z.exe -ErrorAction SilentlyContinue) {} else {
+    $7zdir=(Get-ItemProperty -ErrorAction SilentlyContinue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip\').InstallLocation
+    if (Test-Path "$7zdir\7z.exe") {$env:Path=$env:Path+";$7zdir"}
+    elseif (Test-Path "C:\Program Files\7-Zip\7z.exe") {$env:Path=$env:Path+";C:\Program Files\7-Zip"}
+    elseif (Test-Path "C:\Program Files (x86)\7-Zip\7z.exe") {$env:Path=$env:Path+";C:\Program Files (x86)\7-Zip"}
+    else {
+        Write-Warning "Please install 7-Zip archive utility from www.7-zip.org"
+        Start-Sleep 3
+        Start-Process 'http://www.7-zip.org/'
+        exit 1
+    }
+}
 
 $modDir="$progdir\Mods\KCDtweak\script"
 $null=mkdir "$modDir" -Force
