@@ -326,6 +326,35 @@ function OPTools {
     $ItemsXml.OuterXml | Out-File $ItemsFile -Encoding ASCII
 }
 
+function ZNerf {
+    $null=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']")
+    $modifier = .5
+    if ($menu['ZNerf'].Enabled -in 'true','cheat') {
+        $menu['ZNerf'].Enabled = 'false'
+        $modifier = 1
+    } elseif ($menu['cheats'].Enabled -eq 'true') {
+        $menu['ZNerf'].Enabled = 'cheat'
+        $modifier = .1
+    } else {
+        $menu['ZNerf'].Enabled = 'true'
+        $modifier = .5
+    }
+    $ItemsXml.Items.Item | Where-Object { $_.Name -like 'handAnimal*' -or $_.Name -like '*Zombie*' } |
+        ForEach-Object {
+            $name=$_.Name
+            $_.SelectNodes("
+                property[@class='Action0']/property[@name='DamageBlock'] |
+                property[@class='Action1']/property[@name='DamageBlock']")
+        } | ForEach-Object {
+            $_.SetAttribute('Modded', $menu['ZNerf'].Enabled)
+            if (-not $_.OrigValue) {$_.SetAttribute('OrigValue', $_.value)}
+            $_.value = [string]([int]([int]$_.OrigValue * $modifier))
+            #Write-Warning "Name: $name"
+            #$_
+        }
+    $ItemsXml.OuterXml | Out-File $ItemsFile -Encoding ASCII
+}
+
 function Buffs {
     if ($menu['Buffs'].Enabled -in 'true','cheat') {
         $menu['Buffs'].Enabled = 'false'
@@ -423,8 +452,9 @@ $menu=[ordered]@{
     #create      = [PSCustomObject]@{F=''                    ;Opt='0' ;A='XML-Archive already exists';I='extract XML-Files only for 1st install or after game-patch'}
     OPTools     = [PSCustomObject]@{F='items.xml'           ;Opt='1' ;A='';I='OP Starting Tools (hand,stoneAxe)'}
     OPArmor     = [PSCustomObject]@{F='items.xml'           ;Opt='2' ;A='';I="OP Starting Armor (plant)"}
-    Buffs       = [PSCustomObject]@{F='buffs.xml'           ;Opt='3' ;A='';I="buff bluePillBuff: Food,Water,Health"}
-    CorpsesLL   = [PSCustomObject]@{F='entityclasses.xml'   ;Opt='4' ;A='';I="Corpses Last Longer"}
+    ZNerf       = [PSCustomObject]@{F='items.xml'           ;Opt='3' ;A='';I="Nerf Zombie block damage"}
+    Buffs       = [PSCustomObject]@{F='buffs.xml'           ;Opt='4' ;A='';I="buff bluePillBuff: Food,Water,Health"}
+    CorpsesLL   = [PSCustomObject]@{F='entityclasses.xml'   ;Opt='5' ;A='';I="Corpses Last Longer"}
     cheats      = [PSCustomObject]@{F='Actions'             ;Opt='99';A='[Enabled] Cheats';I='Enable Cheat Mode'}
     #reset       = [PSCustomObject]@{F=''                    ;Opt='X' ;A='';I='reset (if you encounter errors or want to start over)'}
     exit        = [PSCustomObject]@{F=''                    ;Opt='Z' ;A='';I='end'}
@@ -436,6 +466,7 @@ $menu['exit'].Name=''
 
 $menu['OPTools'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handPlayer']").Modded
 $menu['OPArmor'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']").Modded
+$menu['ZNerf'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']").Modded
 $menu['Buffs'].Enabled=$BuffsXml.Buffs.SelectNodes("*[@id='bluePillBuff']").Modded
 $menu['CorpsesLL'].Enabled=$entityclassesXml.entity_classes.SelectNodes("*[@name='Backpack']").SelectNodes("*[@name='TimeStayAfterDeath']").Modded
 
