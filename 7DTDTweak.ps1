@@ -8,6 +8,7 @@ This is a program for applying Tweaks to the XML files for the game 7 Days to Di
 20181123: first working version with successful in-game testing (OPTools,OPArmor,Buffs)
 20181124: 1.0
 20181124a: added Corpses Last Longer
+20181125: added ZNerf, NoDogs
 #>
 [CmdletBinding()]param(
     #The 7DTD Program Directory.  use this parm if the registry query fails.
@@ -57,6 +58,11 @@ $entityclassesFile="$progdir\Data\Config\entityclasses.xml"
 $entityclassesXml = New-Object System.Xml.XmlDocument
 $entityclassesXml.PreserveWhitespace = $true
 $entityclassesXml.Load($entityclassesFile)
+
+$entitygroupsFile="$progdir\Data\Config\entitygroups.xml"
+$entitygroupsXml = New-Object System.Xml.XmlDocument
+$entitygroupsXml.PreserveWhitespace = $true
+$entitygroupsXml.Load($entitygroupsFile)
 
 $ItemsFile="$progdir\Data\Config\items.xml"
 $ItemsXml = New-Object System.Xml.XmlDocument
@@ -362,10 +368,11 @@ function Buffs {
         $BuffsXml.Buffs.SelectNodes("*[@id='bluePillBuff']/modify") | % {
             $inp=$_
             switch($_.Name) {
+                #Not sure if these are actually the original values as file was modified manually prior to the tweak script
                 'food'      {$inp.amount = '1';$inp.rate='100'}
                 'water'     {$inp.amount = '1';$inp.rate='100'}
                 'health'    {$inp.amount = '1';$inp.rate='1'}
-                "wellness"  {$inp.amount = '800';$inp.rate='1';$inp.duration='1'}
+                "wellness"  {$inp.amount = '800';$inp.rate='1';$inp.duration='1'} 
             }
         }
     } elseif ($menu['cheats'].Enabled -eq 'true') {
@@ -445,6 +452,41 @@ function CorpsesLL {
     #pause
 }
 
+function NoDogs {
+    $NoDogs=(
+        'zombieFatCop',
+        'zombieSpider',
+        'animalZombieDog'
+    )
+    if ($menu['NoDogs'].Enabled -in 'true','cheat') {
+        $menu['NoDogs'].Enabled = 'false'
+        $dogChance='1'
+        $multiplier=1
+    } elseif ($menu['cheats'].Enabled -eq 'true') {
+        $menu['NoDogs'].Enabled = 'cheat'
+        $dogChance='0.01'
+        $multiplier=0.01
+    } else {
+        $menu['NoDogs'].Enabled = 'true'
+        $dogChance='0.10'
+        $multiplier=0.1
+    }
+    #$entitygroupsXml.SelectNodes("/entitygroups/entitygroup/entity[@name='animalZombieDog']") | select -first 1
+    $entitygroupsXml.SelectNodes("/entitygroups/entitygroup/entity") | ? Name -in $NoDogs |
+        ForEach-Object {
+            if (-not $_.Modded -and $_.prob) {$_.SetAttribute('OrigProb', $_.prob)}
+            if ($_.OrigProb) {
+                $_.SetAttribute('prob', [string]([decimal]$_.OrigProb * $multiplier))
+            } else {
+                $_.SetAttribute('prob', $dogChance)
+            }
+            $_.SetAttribute('Modded', $menu['NoDogs'].Enabled)
+            #Write-Warning "Name: $name"
+        }
+    $entitygroupsXml.OuterXml | Out-File $entitygroupsFile -Encoding ASCII
+}
+
+
 #############################################
 # The Menu
 
@@ -455,6 +497,7 @@ $menu=[ordered]@{
     ZNerf       = [PSCustomObject]@{F='items.xml'           ;Opt='3' ;A='';I="Nerf Zombie block damage"}
     Buffs       = [PSCustomObject]@{F='buffs.xml'           ;Opt='4' ;A='';I="buff bluePillBuff: Food,Water,Health"}
     CorpsesLL   = [PSCustomObject]@{F='entityclasses.xml'   ;Opt='5' ;A='';I="Corpses Last Longer"}
+    NoDogs      = [PSCustomObject]@{F='entitygroups.xml'    ;Opt='6' ;A='';I="Fewer Dogs,Cops,Spiders"}
     cheats      = [PSCustomObject]@{F='Actions'             ;Opt='99';A='[Enabled] Cheats';I='Enable Cheat Mode'}
     #reset       = [PSCustomObject]@{F=''                    ;Opt='X' ;A='';I='reset (if you encounter errors or want to start over)'}
     exit        = [PSCustomObject]@{F=''                    ;Opt='Z' ;A='';I='end'}
@@ -469,6 +512,7 @@ $menu['OPArmor'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']
 $menu['ZNerf'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']").Modded
 $menu['Buffs'].Enabled=$BuffsXml.Buffs.SelectNodes("*[@id='bluePillBuff']").Modded
 $menu['CorpsesLL'].Enabled=$entityclassesXml.entity_classes.SelectNodes("*[@name='Backpack']").SelectNodes("*[@name='TimeStayAfterDeath']").Modded
+$menu['NoDogs'].Enabled=$entitygroupsXml.SelectNodes("/entitygroups/entitygroup/entity[@name='animalZombieDog']") | select -first 1 | % Modded
 
 #exit
 
