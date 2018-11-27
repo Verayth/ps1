@@ -9,6 +9,7 @@ This is a program for applying Tweaks to the XML files for the game 7 Days to Di
 20181124: 1.0
 20181124a: added Corpses Last Longer
 20181125: added ZNerf, NoDogs
+20181126: Alpha 17 fixes
 #>
 [CmdletBinding()]param(
     #The 7DTD Program Directory.  use this parm if the registry query fails.
@@ -49,6 +50,8 @@ if ($progdir) {
 
 #$FileVersion = "$progdir\7DaysToDie.exe" | % VersionInfo | % FileVersion
 
+$menu=@{}
+
 $BuffsFile="$progdir\Data\Config\buffs.xml"
 $BuffsXml = New-Object System.Xml.XmlDocument
 $BuffsXml.PreserveWhitespace = $true
@@ -73,6 +76,41 @@ $LootXml = New-Object System.Xml.XmlDocument
 $LootXml.PreserveWhitespace = $true
 $LootXml.Load("$progdir\Data\Config\loot.xml")
 
+function itemEdit {
+    param(
+        [string]$Modded,
+        [string]$itemPath,
+        [string]$propertyPath,
+        $changeStat
+    )
+    #"Setting Modded: $Modded, Item: $itemPath  $propertyPath"
+    foreach ($c in $changeStat) {
+        $attribPath="[@name='$($c.N)']"
+        if ($c.T) {$attribPath+="[@tags='$($c.T)']"}
+        $ItemsXml.items.SelectNodes($itemPath) | % { $_.SelectNodes($propertyPath+$attribPath) } | ForEach-Object {
+            if ($_.value) {
+                if (-not $_.Modded) {
+                    $_.SetAttribute('OrigValue', $_.value)
+                }
+                if ($Modded -eq 'true') {
+                    #Modded Value
+                    $_.value = [string]$c.M
+                } elseif ($Modded -eq 'cheat') {
+                    #Cheat Value
+                    $_.value = [string]$c.C
+                } else {
+                    #$_.value = [string]$c.D
+                    #Modded=False: Reset to the Original Value
+                    $_.value = $_.OrigValue
+                }
+                $_.SetAttribute('Modded', $Modded)
+            }
+            #$_
+        }
+    }
+    #exit
+}
+
 function expandedUI {
     # Player craft storage containers
     if ($patch) {$val='14,10'} else {$val='8,9'}
@@ -93,247 +131,141 @@ function expandedUI {
 }
 
 function OPArmor {
-    if ($menu['OPArmor'].Enabled -in 'true','cheat') {
-        $menu['OPArmor'].Enabled = 'false'
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']").SetAttribute('Modded', 'false')
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Insulation"    {$inp.Value = "2" }
-            }
+    $Enabled='true'
+    if ($menu['OPArmor']) {
+        $Enabled=$menu['OPArmor'].Enabled
+        if ($Enabled -in 'true','cheat') {
+            $Enabled = 'false'
+        } elseif ($menu['cheats'].Enabled -eq 'true') {
+            $Enabled = 'cheat'
+        } else {
+            $Enabled = 'true'
         }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "ConcussiveProtection"  {$inp.Value = "0.065,0.11" }
-                "PunctureProtection"    {$inp.Value = "0.065,0.11" }
-                "FireProtection"        {$inp.Value = "0.12,0.2" }
-                "RadiationProtection"   {$inp.Value = "0.06,0.1" }
-                "ElectricalProtection"  {$inp.Value = "0.06,0.1" }
-                "DegradationMax"        {$inp.Value = "72,140" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHat']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.05" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHood']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.05" }
-            }
-        }
-    } elseif ($menu['cheats'].Enabled -eq 'true') {
-        $menu['OPArmor'].Enabled = 'cheat'
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']").SetAttribute('Modded', 'cheat')
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Insulation"    {$inp.Value = "3" } # not too high as easy to overheat
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "ConcussiveProtection"  {$inp.Value = "0.5,0.8" }
-                "PunctureProtection"    {$inp.Value = "0.5,0.8" }
-                "FireProtection"        {$inp.Value = "0.5,0.8" }
-                "RadiationProtection"   {$inp.Value = "0.5,0.8" }
-                "ElectricalProtection"  {$inp.Value = "0.5,0.8" }
-                "DegradationMax"        {$inp.Value = "500,1500" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHat']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.8" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHood']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.8" }
-            }
-        }
-    } else {
-        $menu['OPArmor'].Enabled = 'true'
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']").SetAttribute('Modded', 'true')
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Insulation"    {$inp.Value = "3" } # not too high as easy to overheat
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "ConcussiveProtection"  {$inp.Value = "0.1,0.2" }
-                "PunctureProtection"    {$inp.Value = "0.1,0.2" }
-                "FireProtection"        {$inp.Value = "0.1,0.2" }
-                "RadiationProtection"   {$inp.Value = "0.1,0.2" }
-                "ElectricalProtection"  {$inp.Value = "0.1,0.2" }
-                "DegradationMax"        {$inp.Value = "100,200" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHat']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.2" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='plantFiberHood']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Waterproof"    {$inp.Value = "0.2" }
-            }
-        }
+        $menu['OPArmor'].Enabled=$Enabled
     }
-    #$ItemsXml.Save($ItemsFile)
+    $ItemsXml.Items.SelectNodes("item[@name='plantFiberPants']").SetAttribute('Modded', $Enabled)
+
+    #Alpha 17
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberPants']|item[@name='plantFiberShirt']|item[@name='plantFiberHood']" -propertyPath "effect_group/passive_effect" -changeStat (
+        [PSCustomObject]@{N='ModSlots'          ;D=1 ;M=2;C=5},
+        [PSCustomObject]@{N='HypothermalResist' ;D=2 ;M=5;C=15},
+        [PSCustomObject]@{N='HyperthermalResist';D=2 ;M=5;C=15}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberShoes']|item[@name='plantFiberGloves']" -propertyPath "effect_group/passive_effect" -changeStat (
+        [PSCustomObject]@{N='ModSlots'          ;D=1 ;M=2;C=5},
+        [PSCustomObject]@{N='HypothermalResist' ;D=1 ;M=4;C=10},
+        [PSCustomObject]@{N='HyperthermalResist';D=1 ;M=4;C=10}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberHat']" -propertyPath "effect_group/passive_effect" -changeStat (
+        [PSCustomObject]@{N='ModSlots'          ;D=1 ;M=2;C=5},
+        [PSCustomObject]@{N='HypothermalResist' ;D=1 ;M=5;C=10},
+        [PSCustomObject]@{N='HyperthermalResist';D=7 ;M=10;C=20}
+    )
+
+    #Alpha 16.4
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberPants']" -propertyPath "property"  -changeStat (
+        [PSCustomObject]@{N='Insulation';D=2;M=3;C=3} # not too high as easy to overheat
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberPants']" -propertyPath "property[@class='Attributes']/property"  -changeStat (
+        [PSCustomObject]@{N='ConcussiveProtection'  ;D='0.065,0.11' ;M='0.1,0.2'    ;C='0.5,0.8'},
+        [PSCustomObject]@{N='PunctureProtection'    ;D='0.065,0.11' ;M='0.1,0.2'    ;C='0.5,0.8'},
+        [PSCustomObject]@{N='FireProtection'        ;D='0.12,0.2'   ;M='0.1,0.2'    ;C='0.5,0.8'},
+        [PSCustomObject]@{N='RadiationProtection'   ;D='0.06,0.1'   ;M='0.1,0.2'    ;C='0.5,0.8'},
+        [PSCustomObject]@{N='ElectricalProtection'  ;D='0.06,0.1'   ;M='0.1,0.2'    ;C='0.5,0.8'},
+        [PSCustomObject]@{N='DegradationMax'        ;D='72,140'     ;M='100,200'   ;C='500,1500'}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberHat']" -propertyPath "property"  -changeStat (
+        [PSCustomObject]@{N='Waterproof';D=0.05;M=0.2;C=0.8}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='plantFiberHood']" -propertyPath "property"  -changeStat (
+        [PSCustomObject]@{N='Waterproof';D=0.05;M=0.2;C=0.8}
+    )
+
+    #exit
     $ItemsXml.OuterXml | Out-File $ItemsFile -Encoding ASCII
 }
+#OPArmor
 
 function OPTools {
-    if ($menu['OPTools'].Enabled -in 'true','cheat') {
-        $menu['OPTools'].Enabled = 'false'
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']").SetAttribute('Modded', 'false')
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'             {$inp.Value = '2.5'}
-                'DamageEntity'      {$inp.Value = '5'}
-                'DamageBlock'       {$inp.Value = '1'}
-                "Stamina_usage"     {$inp.Value = "3" }
-                'DamageBonus.head'  {$inp.Value = '2'}
-            }
+    #$ItemsXml.items.SelectNodes("item[@name='meleeToolStoneAxe']/effect_group[@name='Base Effects']/passive_effect[@name='DamageModifier'][@tags='earth']")
+    $Enabled='false'
+    if ($menu['OPTools']) {
+        $Enabled=$menu['OPTools'].Enabled
+        if ($Enabled -in 'true','cheat') {
+            $Enabled = 'false'
+        } elseif ($menu['cheats'].Enabled -eq 'true') {
+            $Enabled = 'cheat'
+        } else {
+            $Enabled = 'true'
         }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'                 {$inp.Value = '2.1'}
-                'Block_range'           {$inp.Value = '3'}
-                'Stamina_usage'         {$inp.Value = '3.5'}
-                'DamageBonus.head'      {$inp.Value = '5'}
-                'DamageBonus.glass'     {$inp.Value = '0.42'}
-                'DamageBonus.wood'      {$inp.Value = '1'}
-                'DamageBonus.earth'     {$inp.Value = '0.2083'}
-                'DamageBonus.stone'     {$inp.Value = '0.625'}
-                'DamageBonus.metal'     {$inp.Value = '0.4167'}
-                'DamageBonus.organic'   {$inp.Value = '0.8334'}
-                'ToolCategory.harvestingTools'  {$inp.Value = '0.7'}
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action1']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Repair_amount"     {$inp.Value = "100" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'EntityDamage'      {$inp.Value = '4,10'}
-                'BlockDamage'       {$inp.Value = '22.8,30'}
-                'DegradationMax'    {$inp.Value = '100,600'}
-                'DegradationRate'   {$inp.Value = '1,1'}
-            }
-        }
-    } elseif ($menu['cheats'].Enabled -eq 'true') {
-        $menu['OPTools'].Enabled = 'cheat'
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']").SetAttribute('Modded', 'cheat')
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'                 {$inp.Value = '10'}
-                'DamageEntity'          {$inp.Value = '100'}
-                'DamageBlock'           {$inp.Value = '10'}
-                "Stamina_usage"         {$inp.Value = "1" }
-                'DamageBonus.head'      {$inp.Value = '5'}
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'                 {$inp.Value = '5'}
-                'Block_range'           {$inp.Value = '5'}
-                'Stamina_usage'         {$inp.Value = '1'}
-                'DamageBonus.head'      {$inp.Value = '5'}
-                'DamageBonus.glass'     {$inp.Value = '1'}
-                'DamageBonus.wood'      {$inp.Value = '1'}
-                'DamageBonus.earth'     {$inp.Value = '1'}
-                'DamageBonus.stone'     {$inp.Value = '1'}
-                'DamageBonus.metal'     {$inp.Value = '1'}
-                'DamageBonus.organic'   {$inp.Value = '1'}
-                'ToolCategory.harvestingTools'  {$inp.Value = '1.5'}
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action1']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Repair_amount"     {$inp.Value = "500" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'EntityDamage'      {$inp.Value = '150,200'}
-                'BlockDamage'       {$inp.Value = '150,200'}
-                'DegradationMax'    {$inp.Value = '500,2000'}
-                'DegradationRate'   {$inp.Value = '1,1'}
-            }
-        }
-    } else {
-        $menu['OPTools'].Enabled = 'true'
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']").SetAttribute('Modded', 'true')
-        $ItemsXml.Items.SelectNodes("*[@name='handPlayer']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'                 {$inp.Value = '3'}
-                'DamageEntity'          {$inp.Value = '100'}
-                'DamageBlock'           {$inp.Value = '10'}
-                "Stamina_usage"         {$inp.Value = "1" }
-                'DamageBonus.head'      {$inp.Value = '5'}
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action0']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'Range'                 {$inp.Value = '3'}
-                'Block_range'           {$inp.Value = '5'}
-                'Stamina_usage'         {$inp.Value = '2'}
-                'DamageBonus.head'      {$inp.Value = '5'}
-                'DamageBonus.glass'     {$inp.Value = '0.5'}
-                'DamageBonus.wood'      {$inp.Value = '1'}
-                'DamageBonus.earth'     {$inp.Value = '0.4'}
-                'DamageBonus.stone'     {$inp.Value = '0.8'}
-                'DamageBonus.metal'     {$inp.Value = '0.6'}
-                'DamageBonus.organic'   {$inp.Value = '1'}
-                'ToolCategory.harvestingTools'  {$inp.Value = '1.0'}
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Action1']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                "Repair_amount"     {$inp.Value = "200" }
-            }
-        }
-        $ItemsXml.Items.SelectNodes("*[@name='stoneAxe']/property[@class='Attributes']/property") | % {
-            $inp=$_
-            switch($_.Name) {
-                'EntityDamage'      {$inp.Value = '8,20'}
-                'BlockDamage'       {$inp.Value = '40,60'}
-                'DegradationMax'    {$inp.Value = '200,900'}
-                'DegradationRate'   {$inp.Value = '1,1'}
-            }
-        }
+        $menu['OPTools'].Enabled=$Enabled
     }
-    #$ItemsXml.Save($ItemsFile)
+    $ItemsXml.items.SelectNodes("item[@name='stoneAxe']|item[@name='meleeToolStoneAxe']").SetAttribute('Modded', $Enabled)
+
+    #Alpha17
+    itemEdit -Modded $Enabled -itemPath "item[@name='meleeHandPlayer']" -propertyPath "effect_group[@name='Base Effects']/passive_effect"  -changeStat (
+        [PSCustomObject]@{N='EntityDamage'      ;D=7  ;M=20 ;C=100},
+        [PSCustomObject]@{N='BlockDamage'       ;D=2  ;M=5  ;C=10},
+        [PSCustomObject]@{N='AttacksPerMinute'  ;D=80 ;M=100;C=150},
+        [PSCustomObject]@{N='StaminaLoss'       ;D=8  ;M=2  ;C=1},
+        [PSCustomObject]@{N='MaxRange'          ;D=2.0;M=2.5;C=5.0},
+        [PSCustomObject]@{N='BlockRange'        ;D=2.6;M=4.0;C=6.0},
+        [PSCustomObject]@{N='HarvestCount'      ;D=0  ;M=2  ;C=5}
+    )
+
+    itemEdit -Modded $Enabled -itemPath "item[@name='meleeToolStoneAxe']" -propertyPath "effect_group[@name='Base Effects']/passive_effect" -changeStat (
+        [PSCustomObject]@{N='MaxRange'          ;D=2.4;M=4;C=6},
+        [PSCustomObject]@{N='BlockRange'        ;D=3;M=4;C=6},
+        [PSCustomObject]@{N='EntityDamage'      ;D=11;M=22;C=100},
+        [PSCustomObject]@{N='BlockDamage'       ;D=26;M=60;C=200},
+        [PSCustomObject]@{N='AttacksPerMinute'  ;D=75;M=100;C=150},
+        [PSCustomObject]@{N='HarvestCount'      ;D=.35;M=.5;C=1},
+        [PSCustomObject]@{N='DamageModifier'    ;T='stone';D=-.3;M=-.2;C=1},
+        [PSCustomObject]@{N='DamageModifier'    ;T='earth';D=-.8;M=-.4;C=1},
+        [PSCustomObject]@{N='DamageModifier'    ;T='metal';D=-.5;M=-.3;C=1},
+        [PSCustomObject]@{N='StaminaLoss'       ;D=14;M=7;C=3},
+        [PSCustomObject]@{N='DegradationMax'    ;D='70,200';M='100,300';C='500,1000'}
+        #[PSCustomObject]@{N='ModSlots'          ;D='0,5';M='0,5';C='0,5'},
+        #[PSCustomObject]@{N='ModPowerBonus'     ;T='EntityDamage,BlockDamage';D=.15;M=.15;C=.15}
+    )
+
+    #Alpha 16.4
+    #$ItemsXml.Items.SelectNodes("*[@name='handPlayer']/property[@class='Action0']/property") | % { $_.Name
+    itemEdit -Modded $Enabled -itemPath "item[@name='handPlayer']" -propertyPath "property[@class='Action0']/property"  -changeStat (
+        [PSCustomObject]@{N='Range'             ;D=2.5;M=3 ;C=10},
+        [PSCustomObject]@{N='DamageEntity'      ;D=5  ;M=30;C=100},
+        [PSCustomObject]@{N='DamageBlock'       ;D=1  ;M=5 ;C=10},
+        [PSCustomObject]@{N='Stamina_usage'     ;D=3  ;M=2 ;C=1},
+        [PSCustomObject]@{N='DamageBonus.head'  ;D=2  ;M=3 ;C=5}
+    )
+
+    itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']" -propertyPath "property[@class='Action0']/property"  -changeStat (
+        [PSCustomObject]@{N='Range'                         ;D=2.1   ;M=3 ;C=5},
+        [PSCustomObject]@{N='Block_range'                   ;D=3     ;M=5 ;C=5},
+        [PSCustomObject]@{N='Stamina_usage'                 ;D=3.5   ;M=2 ;C=1},
+        [PSCustomObject]@{N='DamageBonus.head'              ;D=5     ;M=5 ;C=5},
+        [PSCustomObject]@{N='DamageBonus.glass'             ;D=0.42  ;M=.5;C=1},
+        [PSCustomObject]@{N='DamageBonus.wood'              ;D=1     ;M=1 ;C=1},
+        [PSCustomObject]@{N='DamageBonus.earth'             ;D=0.2083;M=.4;C=1},
+        [PSCustomObject]@{N='DamageBonus.stone'             ;D=0.625 ;M=.8;C=1},
+        [PSCustomObject]@{N='DamageBonus.metal'             ;D=0.4167;M=.6;C=1},
+        [PSCustomObject]@{N='DamageBonus.organic'           ;D=0.8334;M=1 ;C=1},
+        [PSCustomObject]@{N='ToolCategory.harvestingTools'  ;D=0.7   ;M=1.0;C=1.5}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']" -propertyPath "property[@class='Action1']/property"  -changeStat (
+        [PSCustomObject]@{N='Repair_amount';D=100;M=200;C=500}
+    )
+    itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']" -propertyPath "property[@class='Attributes']/property"  -changeStat (
+        [PSCustomObject]@{N='EntityDamage'      ;D='4,10'   ;M='8,20'   ;C='150,200'},
+        [PSCustomObject]@{N='BlockDamage'       ;D='22.8,30';M='40,60'  ;C='150,200'},
+        [PSCustomObject]@{N='DegradationMax'    ;D='100,600';M='200,900';C='500,2000'},
+        [PSCustomObject]@{N='DegradationRate'   ;D='1,1'    ;M='1,1'    ;C='1,1'}
+    )
     $ItemsXml.OuterXml | Out-File $ItemsFile -Encoding ASCII
 }
 
 function ZNerf {
-    $null=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']")
+    #$null=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']")
     $modifier = .5
     if ($menu['ZNerf'].Enabled -in 'true','cheat') {
         $menu['ZNerf'].Enabled = 'false'
@@ -350,7 +282,8 @@ function ZNerf {
             $name=$_.Name
             $_.SelectNodes("
                 property[@class='Action0']/property[@name='DamageBlock'] |
-                property[@class='Action1']/property[@name='DamageBlock']")
+                property[@class='Action1']/property[@name='DamageBlock'] |
+                effect_group/passive_effect[@name='BlockDamage']")
         } | ForEach-Object {
             $_.SetAttribute('Modded', $menu['ZNerf'].Enabled)
             if (-not $_.OrigValue) {$_.SetAttribute('OrigValue', $_.value)}
@@ -362,6 +295,7 @@ function ZNerf {
 }
 
 function Buffs {
+    #bluePillBuff Removed in Alpha 17
     if ($menu['Buffs'].Enabled -in 'true','cheat') {
         $menu['Buffs'].Enabled = 'false'
         $BuffsXml.Buffs.SelectNodes("*[@id='bluePillBuff']").SetAttribute('Modded', 'false')
@@ -507,9 +441,10 @@ $menu=[ordered]@{
 $menu | % Keys | % { $menu[$_] | Add-Member Name $_ -PassThru | Add-Member Enabled 'false' }
 $menu['exit'].Name=''
 
-$menu['OPTools'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handPlayer']").Modded
+#$menu['OPTools'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handPlayer']").Modded
+$menu['OPTools'].Enabled=$ItemsXml.items.SelectNodes("item[@name='stoneAxe']|item[@name='meleeToolStoneAxe']").Modded
 $menu['OPArmor'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='plantFiberPants']").Modded
-$menu['ZNerf'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handZombie']/property[@class='Action0']/property[@name='DamageBlock']").Modded
+$menu['ZNerf'].Enabled=$ItemsXml.Items.SelectNodes("*[@name='handZombie']|*[@name='meleeHandZombieCop']") | % { $_.SelectNodes("property[@class='Action0']/property[@name='DamageBlock']") } | select -first 1 | % Modded
 $menu['Buffs'].Enabled=$BuffsXml.Buffs.SelectNodes("*[@id='bluePillBuff']").Modded
 $menu['CorpsesLL'].Enabled=$entityclassesXml.entity_classes.SelectNodes("*[@name='Backpack']").SelectNodes("*[@name='TimeStayAfterDeath']").Modded
 $menu['NoDogs'].Enabled=$entitygroupsXml.SelectNodes("/entitygroups/entitygroup/entity[@name='animalZombieDog']") | select -first 1 | % Modded
