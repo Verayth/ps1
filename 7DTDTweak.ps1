@@ -19,7 +19,7 @@ This is a program for applying Tweaks to the XML files for the game 7 Days to Di
 $header=@"
 ##################################################################
 # 7 Days to Die - XML Modding Tool                               #
-# by Verayth - Version 1.1.181124a                               #
+# by Verayth/rob - Version 1.1.181126                            #
 ##################################################################
 "@
 $ErrorActionPreference='Stop'
@@ -252,7 +252,8 @@ function OPTools {
         [PSCustomObject]@{N='DamageBonus.organic'           ;D=0.8334;M=1 ;C=1},
         [PSCustomObject]@{N='ToolCategory.harvestingTools'  ;D=0.7   ;M=1.0;C=1.5}
     )
-    itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']" -propertyPath "property[@class='Action1']/property"  -changeStat (
+    itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']|item[@name='meleeToolStoneAxe']" -propertyPath "property[@class='Action1']/property"  -changeStat (
+        [PSCustomObject]@{N='Delay';D=1;M=.75;C=.2},
         [PSCustomObject]@{N='Repair_amount';D=100;M=200;C=500}
     )
     itemEdit -Modded $Enabled -itemPath "item[@name='stoneAxe']" -propertyPath "property[@class='Attributes']/property"  -changeStat (
