@@ -10,6 +10,7 @@ This is a program for applying Tweaks to the XML files for the game 7 Days to Di
 20181124a: added Corpses Last Longer
 20181125: added ZNerf, NoDogs
 20181126: Alpha 17 fixes
+20181211: added check for game folder if running alongside it
 #>
 [CmdletBinding()]param(
     #The 7DTD Program Directory.  use this parm if the registry query fails.
@@ -19,7 +20,7 @@ This is a program for applying Tweaks to the XML files for the game 7 Days to Di
 $header=@"
 ##################################################################
 # 7 Days to Die - XML Modding Tool                               #
-# by Verayth/rob - Version 1.1.181126                            #
+# by Verayth/rob - Version 1.1.181211                            #
 ##################################################################
 "@
 $ErrorActionPreference='Stop'
@@ -42,6 +43,14 @@ if ($progdir) {
     }
 } else {
     $progdir=(Get-ItemProperty -ErrorAction SilentlyContinue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 251570').InstallLocation
+    if (-not $progdir) {
+        #Loop through parent directories looking for the game
+        $path = $pwd
+        while($path -and !(Test-Path (Join-Path $path '7DaysToDie.exe'))){
+            $path = Split-Path $path -Parent
+        }
+        $progdir=$path
+    }
     if ($progdir) {Write-Verbose "PROGDIR: $progdir"} else {Write-Warning "Unable to find Game Install folder";Start-Sleep 3;exit 1}
 }
 
@@ -453,7 +462,6 @@ $menu['NoDogs'].Enabled=$entitygroupsXml.SelectNodes("/entitygroups/entitygroup/
 #exit
 
 function cheats {
-    #for future expansion
     if ($menu['cheats'].Enabled -eq 'true') {
         $menu['cheats'].Enabled = 'false'
     } else {
