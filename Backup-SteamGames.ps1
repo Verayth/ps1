@@ -15,9 +15,9 @@ Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Un
         $_.DisplayName -like '*Oblivion*'
     } | ForEach-Object {
         Write-Host "Checking: $($_.DisplayName)" -ForegroundColor Blue
-        Write-Host $_.InstallLocation
+        #Write-Host $_.InstallLocation
         $exe=Get-ChildItem $_.InstallLocation | Where-Object Name -in 'Fallout4.exe','SkyrimSE.exe','Oblivion.exe','PillarsOfEternityII.exe',
-            'tld.exe','Tyranny.exe','CrushCrush.exe','ConanSandbox.exe','Interstellaria.exe','t-engine.exe'
+            'tld.exe','Tyranny.exe','CrushCrush.exe','ConanSandbox.exe','Interstellaria.exe','t-engine.exe','t-engine-debug.exe'
         #,'t-engine.exe'
         if ($exe) {$exe} else {
             Write-Host "'$($_.InstallLocation)'" -ForegroundColor Red
