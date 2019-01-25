@@ -400,6 +400,8 @@ function NoDogs {
     $NoDogs=(
         'zombieFatCop',
         'zombieSpider',
+        'animalZombieVulture',
+        'animalZombieVultureRadiated',
         'animalZombieDog'
     )
     if ($menu['NoDogs'].Enabled -in 'true','cheat') {
@@ -441,7 +443,7 @@ $menu=[ordered]@{
     ZNerf       = [PSCustomObject]@{F='items.xml'           ;Opt='3' ;A='';I="Nerf Zombie block damage"}
     Buffs       = [PSCustomObject]@{F='buffs.xml'           ;Opt='4' ;A='';I="buff bluePillBuff: Food,Water,Health"}
     CorpsesLL   = [PSCustomObject]@{F='entityclasses.xml'   ;Opt='5' ;A='';I="Corpses Last Longer"}
-    NoDogs      = [PSCustomObject]@{F='entitygroups.xml'    ;Opt='6' ;A='';I="Fewer Dogs,Cops,Spiders"}
+    NoDogs      = [PSCustomObject]@{F='entitygroups.xml'    ;Opt='6' ;A='';I="Fewer Dogs,Cops,Spiders,Vultures"}
     cheats      = [PSCustomObject]@{F='Actions'             ;Opt='99';A='[Enabled] Cheats';I='Enable Cheat Mode'}
     #reset       = [PSCustomObject]@{F=''                    ;Opt='X' ;A='';I='reset (if you encounter errors or want to start over)'}
     exit        = [PSCustomObject]@{F=''                    ;Opt='Z' ;A='';I='end'}
