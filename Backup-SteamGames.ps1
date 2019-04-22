@@ -8,8 +8,11 @@ $executables=@(
     'Fallout4.exe',
     'Interstellaria.exe',
     'KingdomCome.exe',
+    'Kingmaker.exe',
+    'NMS.exe',
     'Oblivion.exe',
     'PillarsOfEternityII.exe',
+    'Portia.exe',
     'SkyrimSE.exe',
     't-engine.exe',
     't-engine-debug.exe',
@@ -26,7 +29,10 @@ Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Un
         $_.DisplayName -like 'Dungeons*' -or
         $_.DisplayName -like 'Interstellaria' -or
         $_.DisplayName -like 'Kingdom Come*' -or
+        $_.DisplayName -like 'No Man* Sky' -or
         $_.DisplayName -like '*Oblivion*' -or
+        $_.DisplayName -like 'Pathfinder*' -or
+        $_.DisplayName -like '*Portia' -or
         $_.DisplayName -like 'Pillars of Eternity*' -or
         $_.DisplayName -like '*Skyrim Special Edition' -or
         #$_.DisplayName -like '*Starve*' -or
@@ -34,11 +40,14 @@ Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Un
     } | ForEach-Object {
         Write-Host "Checking: $($_.DisplayName)" -ForegroundColor Blue
         #Write-Host $_.InstallLocation
-        $exe=Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64") -ErrorAction SilentlyContinue | Where-Object Name -in $executables
+        $exe=Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64", "$($_.InstallLocation)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -in $executables
         #,'t-engine.exe'
-        if ($exe) {$exe} else {
+        if ($exe) {
+            Write-Verbose "'$($_.InstallLocation)'"
+            $exe
+        } else {
             Write-Host "'$($_.InstallLocation)'" -ForegroundColor Red
-            Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64") -ErrorAction SilentlyContinue | Where-Object Name -like '*.exe' |
+            Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64", "$($_.InstallLocation)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -like '*.exe' |
                 Select-Object Name,
                     @{N='FileVersion';E={$_.VersionInfo.FileVersion}},
                     @{N='Created';E={'{0:yyyy-MM-dd}' -f $_.CreationTime}},
