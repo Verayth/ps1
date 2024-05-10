@@ -1,5 +1,47 @@
+<#
 
+#>
 [CmdletBinding()]param()
+Import-Module C:\_SVN\Steam-GetOnTop\Modules\SteamTools -ErrorAction stop
+
+$steamPath=Get-SteamPath
+$LibraryFolders = ConvertFrom-VDF (cat "$steamPath\SteamApps\libraryfolders.vdf")
+#$config = ConvertFrom-VDF (Get-Content "$steamPath\config\config.vdf")
+#$config
+
+[array]$steamLibraries += $steamPath
+foreach ($i in 1..9) {
+    $a=$LibraryFolders.LibraryFolders.$i
+    if ($a) {$steamLibraries+=$a.Replace("\\", "\")}
+}
+
+$acf = "$($steamPath)\SteamApps\appmanifest_$($id).acf"
+$Games=@()
+
+foreach ($steamLibrary in $steamLibraries) {
+    foreach ($acfFile in ls $steamLibrary\SteamApps\appmanifest_*.acf | % FullName) {
+        $appManifest=ConvertFrom-VDF (Get-Content $acfFile)
+        #$appManifest.AppState
+        $InstallDir=$appManifest.AppState.InstallDir.Replace("\\", "\")
+        if ($InstallDir -notmatch ':') {
+            $InstallDir="$steamLibrary\SteamApps\Common\$InstallDir"
+        }
+        [array]$Games+=[PSCustomObject]@{
+            #Library     =$steamLibrary
+            AppID       =$appManifest.AppState.AppID
+            Name        =$appManifest.AppState.Name
+            InstallDir  =$InstallDir
+            LastUpdated =$appManifest.AppState.LastUpdated
+            SizeOnDisk  =$appManifest.AppState.SizeOnDisk
+            BuildID     =$appManifest.AppState.buildid
+        }
+        #exit
+    }
+}
+#$Games
+
+#[array]$apps = @()
+
 
 $executables=@(
     'Dungeons3Bin.exe',
@@ -14,40 +56,43 @@ $executables=@(
     'PillarsOfEternityII.exe',
     'Portia.exe',
     'SkyrimSE.exe',
+    'TESV.exe',
     't-engine.exe',
     't-engine-debug.exe',
+    'Terraria.exe',
     'tld.exe',
     'Tyranny.exe'
 )
 
-Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App*\',
-                 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App*\' |
-    Where-Object {
-        $_.DisplayName -in 'Fallout 4','The Long Dark','Tyranny' -or
-        $_.DisplayName -like 'Conan Exiles' -or
-        $_.DisplayName -like 'Crush Crush' -or
-        $_.DisplayName -like 'Dungeons*' -or
-        $_.DisplayName -like 'Interstellaria' -or
-        $_.DisplayName -like 'Kingdom Come*' -or
-        $_.DisplayName -like 'No Man* Sky' -or
-        $_.DisplayName -like '*Oblivion*' -or
-        $_.DisplayName -like 'Pathfinder*' -or
-        $_.DisplayName -like '*Portia' -or
-        $_.DisplayName -like 'Pillars of Eternity*' -or
-        $_.DisplayName -like '*Skyrim Special Edition' -or
-        #$_.DisplayName -like '*Starve*' -or
-        $_.DisplayName -like "Tales of Maj'Eyal"
-    } | ForEach-Object {
-        Write-Host "Checking: $($_.DisplayName)" -ForegroundColor Blue
-        #Write-Host $_.InstallLocation
-        $exe=Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64", "$($_.InstallLocation)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -in $executables
+$Games | ? AppID -in (
+    377160, # Fallout 4
+    305620, # The Long Dark
+    362960, # Tyranny
+    440900, # Conan Exiles
+    459820, # Crush Crush
+    493900, # Dungeons 3
+    280360, # Interstellaria
+    379430, # Kingdom Come: Deliverance
+    275850, # No Man's Sky
+    22330 , # The Elder Scrolls IV: Oblivion             
+    72850 , # The Elder Scrolls V: Skyrim                
+    489830, # The Elder Scrolls V: Skyrim Special Edition
+    640820, # Pathfinder: Kingmaker
+    666140, # My Time At Portia
+    560130, # Pillars of Eternity II: Deadfire
+    #219740, # Don't Starve
+    259680 # Tales of Maj'Eyal
+) | ForEach-Object {
+        Write-Host "Checking: $($_.Name)" -ForegroundColor Blue
+        #Write-Host $_.InstallDir
+        $exe=Get-ChildItem ($_.InstallDir, "$($_.InstallDir)\bin\Win64", "$($_.InstallDir)\ConanSandbox\Binaries\Win64", "$($_.InstallDir)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -in $executables
         #,'t-engine.exe'
         if ($exe) {
-            Write-Verbose "'$($_.InstallLocation)'"
+            Write-Verbose "'$($_.InstallDir)'"
             $exe
         } else {
-            Write-Host "'$($_.InstallLocation)'" -ForegroundColor Red
-            Get-ChildItem ($_.InstallLocation, "$($_.InstallLocation)\bin\Win64", "$($_.InstallLocation)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -like '*.exe' |
+            Write-Host "'$($_.InstallDir)'" -ForegroundColor Red
+            Get-ChildItem ($_.InstallDir, "$($_.InstallDir)\bin\Win64", "$($_.InstallDir)\ConanSandbox\Binaries\Win64", "$($_.InstallDir)\Binaries") -ErrorAction SilentlyContinue | Where-Object Name -like '*.exe' |
                 Select-Object Name,
                     @{N='FileVersion';E={$_.VersionInfo.FileVersion}},
                     @{N='Created';E={'{0:yyyy-MM-dd}' -f $_.CreationTime}},
