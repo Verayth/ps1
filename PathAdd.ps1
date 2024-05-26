@@ -1,9 +1,11 @@
 ﻿[CmdletBinding()]
 param(
-    #the path entry to add
-	[parameter(mandatory=$true)] [string[]]$pathAdd,
+    #the path entries to add, or $null to refresh from system
+    [string[]]$pathAdd,
     #User or Machine
     [string]$type='User',
+    #
+    [string]$PathVariable='PATH',
     # skip Test-Path check
     [switch]$force,
     # re-add
@@ -12,16 +14,16 @@ param(
     [switch]$top
 )
 
-if ($type -eq 'Machine') {
-    if (Test-IsAdmin.ps1) {} else {
-        Write-Warning "Must be Administrator to update Machine PATH"
-        exit 1
-    }
-} elseif ($type -ne 'User') {Write-Warning "Invalid PATH Type Specified (User,Machine)";exit 1}
+if ($type -notin 'Local','User','Machine') {throw "Invalid PATH Type Specified (Local,User,Machine)"}
 
-$OrigPath=[System.Environment]::GetEnvironmentVariable('PATH',$type)
-$path={$OrigPath -split ';' | ? { $_ -NE ''}}.Invoke()
+if ($type -eq 'Local') {
+    $OrigPath=(Get-ChildItem Env:$PathVariable -ErrorAction SilentlyContinue).Value
+} else {
+    $OrigPath=[System.Environment]::GetEnvironmentVariable($PathVariable,$type)
+}
+$path={$OrigPath -split ';' | Where-Object { $_ -NE ''} | ForEach-Object {$_.TrimEnd('\')}}.Invoke()
 
+$pathAdd=$pathAdd | ForEach-Object {$_.TrimEnd('\')}
 if ($ReAdd) {
     foreach ($p in $pathAdd) {
         while($path.Remove($p)) {}
@@ -48,7 +50,24 @@ foreach ($p in $pathAdd) {
 
 $NewPath=$path -join ';'
 if ($NewPath -ne $OrigPath) {
-    Write-Verbose "Updating ${type}Path: $NewPath"
-    [System.Environment]::SetEnvironmentVariable('PATH',$NewPath,$type)
-    $env:Path=[System.Environment]::GetEnvironmentVariable('PATH','Machine')+';'+[System.Environment]::GetEnvironmentVariable('PATH','User')
+    Write-Verbose "Updating ${type}-${PathVariable}: $NewPath"
+    if ($type -eq 'Local') {
+        Set-Item -Path Env:$PathVariable -Value $NewPath
+    } else {
+        [System.Environment]::SetEnvironmentVariable($PathVariable,$NewPath,$type)
+    }
+}
+if ($type -ne 'Local') {
+    #env:PATH= machine takes precedence
+    if ($PathVariable -eq 'PATH') {
+        Set-Item -Path Env:$PathVariable -Value (
+            [System.Environment]::GetEnvironmentVariable($PathVariable,'Machine')+';'+
+            [System.Environment]::GetEnvironmentVariable($PathVariable,'User')
+        )
+    } else {
+        Set-Item -Path Env:$PathVariable -Value (
+            [System.Environment]::GetEnvironmentVariable($PathVariable,'User')+';'+
+            [System.Environment]::GetEnvironmentVariable($PathVariable,'Machine')
+        )
+    }
 }
